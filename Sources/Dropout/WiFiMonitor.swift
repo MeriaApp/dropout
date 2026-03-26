@@ -107,6 +107,26 @@ final class WiFiMonitor: NSObject {
             isPoweredOn: iface.powerOn()
         )
     }
+
+    /// Disconnect from the current network without removing it from saved networks.
+    /// macOS will then auto-join the next preferred saved network.
+    func disconnectFromCurrentNetwork() {
+        guard let iface = client.interface() else { return }
+        iface.disassociate()
+    }
+
+    /// Cycle the WiFi interface: disconnect, brief pause, then macOS reconnects
+    /// to the best available saved network automatically.
+    func cycleConnection() {
+        guard let iface = client.interface() else { return }
+        let ssid = iface.ssid()
+        iface.disassociate()
+
+        // macOS auto-reconnects to preferred networks after disassociate.
+        // If it picks the same dead network, we'll catch it again via
+        // the dead network detection flow.
+        print("dropout: disconnected from \(ssid ?? "unknown") — waiting for auto-rejoin")
+    }
 }
 
 // MARK: - CWEventDelegate

@@ -10,6 +10,11 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
     private let webhookService = WebhookService()
 
     private var refreshTimer: Timer?
+    private var deadNetworkTimer: Timer?
+    private var deadNetworkSSID: String?
+
+    // Dead network detection: how long to wait with no internet before cycling
+    private let deadNetworkTimeout: TimeInterval = 15
 
     // Throttling: prevent notification spam during WiFi flapping
     private var lastNotificationTime: [WiFiEventType: Date] = [:]
@@ -56,6 +61,7 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         menuBar.onQuit = { NSApp.terminate(nil) }
         menuBar.onOpenHooksFolder = { [weak self] in self?.openHooksFolder() }
         menuBar.onShowAbout = { [weak self] in self?.showAbout() }
+        menuBar.onDisconnect = { [weak self] in self?.disconnectFromDeadNetwork() }
 
         // Wire up WiFi monitor
         wifiMonitor.onEvent = { [weak self] event in self?.handleEvent(event) }
@@ -63,14 +69,27 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
             self?.menuBar.updateWiFiState(state)
         }
 
-        // Wire up network monitor
+        // Wire up network monitor with dead network detection
         networkMonitor.onInternetStatusChanged = { [weak self] reachable in
             guard let self else { return }
             self.menuBar.updateInternetStatus(reachable: reachable)
 
-            let type: WiFiEventType = reachable ? .internetRestored : .internetLost
-            let event = WiFiEvent(type: type, ssid: self.wifiMonitor.currentState().ssid)
-            self.handleEvent(event)
+            if !reachable {
+                // Start dead network timer — if internet doesn't come back
+                // within the timeout, auto-disconnect from this network
+                let currentSSID = self.wifiMonitor.currentState().ssid
+                self.deadNetworkSSID = currentSSID
+                self.startDeadNetworkTimer()
+
+                let event = WiFiEvent(type: .internetLost, ssid: currentSSID)
+                self.handleEvent(event)
+            } else {
+                // Internet is back — cancel dead network timer
+                self.cancelDeadNetworkTimer()
+
+                let event = WiFiEvent(type: .internetRestored, ssid: self.wifiMonitor.currentState().ssid)
+                self.handleEvent(event)
+            }
         }
 
         // Start monitoring
@@ -195,6 +214,57 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         return Date().timeIntervalSince(lastTime) >= interval
     }
 
+    // MARK: - Dead Network Detection
+
+    private func startDeadNetworkTimer() {
+        cancelDeadNetworkTimer()
+        let autoDisconnect = UserDefaults.standard.bool(forKey: "autoDisconnectDeadNetworks")
+        guard autoDisconnect else { return }
+
+        deadNetworkTimer = Timer.scheduledTimer(withTimeInterval: deadNetworkTimeout, repeats: false) { [weak self] _ in
+            self?.handleDeadNetwork()
+        }
+    }
+
+    private func cancelDeadNetworkTimer() {
+        deadNetworkTimer?.invalidate()
+        deadNetworkTimer = nil
+        deadNetworkSSID = nil
+    }
+
+    private func handleDeadNetwork() {
+        let state = wifiMonitor.currentState()
+        guard state.isConnected, !networkMonitor.isInternetReachable else { return }
+
+        let ssid = state.ssid ?? "current network"
+        print("dropout: dead network detected (\(ssid)) — disconnecting to find a better network")
+
+        // Disconnect — macOS will auto-join the next preferred saved network
+        wifiMonitor.cycleConnection()
+
+        notificationService.send(
+            title: "Dead Network — Switching",
+            body: "\(ssid) has no internet. Disconnected to find a better network.",
+            sound: UserDefaults.standard.bool(forKey: "soundEnabled"),
+            critical: false
+        )
+
+        deadNetworkSSID = nil
+    }
+
+    /// Manual disconnect triggered from menu bar
+    private func disconnectFromDeadNetwork() {
+        let state = wifiMonitor.currentState()
+        let ssid = state.ssid ?? "current network"
+        wifiMonitor.disconnectFromCurrentNetwork()
+
+        notificationService.send(
+            title: "Disconnected",
+            body: "Left \(ssid) — macOS will join the next available network.",
+            sound: false
+        )
+    }
+
     // MARK: - UI Refresh
 
     private func refreshUI() {
@@ -288,6 +358,7 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         UserDefaults.standard.register(defaults: [
             "soundEnabled": true,
             "signalWarningsEnabled": true,
+            "autoDisconnectDeadNetworks": true,
         ])
     }
 }

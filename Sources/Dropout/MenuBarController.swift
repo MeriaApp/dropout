@@ -12,14 +12,17 @@ final class MenuBarController {
     private var separatorAfterStatus: NSMenuItem!
     private var recentHeaderItem: NSMenuItem!
     private var statsMenuItem: NSMenuItem!
+    private var disconnectButton: NSMenuItem!
     private var soundToggle: NSMenuItem!
     private var signalWarningToggle: NSMenuItem!
+    private var autoDisconnectToggle: NSMenuItem!
     private var loginToggle: NSMenuItem!
     private var recentEventItems: [NSMenuItem] = []
 
     var onExportLog: (() -> Void)?
     var onOpenHooksFolder: (() -> Void)?
     var onShowAbout: (() -> Void)?
+    var onDisconnect: (() -> Void)?
     var onQuit: (() -> Void)?
 
     func setup() {
@@ -46,6 +49,16 @@ final class MenuBarController {
         internetMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         internetMenuItem.isEnabled = false
         menu.addItem(internetMenuItem)
+
+        disconnectButton = NSMenuItem(
+            title: "Disconnect from This Network",
+            action: #selector(disconnectAction(_:)),
+            keyEquivalent: "d"
+        )
+        disconnectButton.keyEquivalentModifierMask = .command
+        disconnectButton.target = self
+        disconnectButton.isHidden = false
+        menu.addItem(disconnectButton)
 
         separatorAfterStatus = NSMenuItem.separator()
         menu.addItem(separatorAfterStatus)
@@ -91,6 +104,15 @@ final class MenuBarController {
         signalWarningToggle.target = self
         signalWarningToggle.state = UserDefaults.standard.bool(forKey: "signalWarningsEnabled") ? .on : .off
         menu.addItem(signalWarningToggle)
+
+        autoDisconnectToggle = NSMenuItem(
+            title: "Auto-Leave Dead Networks",
+            action: #selector(toggleAutoDisconnect(_:)),
+            keyEquivalent: ""
+        )
+        autoDisconnectToggle.target = self
+        autoDisconnectToggle.state = UserDefaults.standard.bool(forKey: "autoDisconnectDeadNetworks") ? .on : .off
+        menu.addItem(autoDisconnectToggle)
 
         loginToggle = NSMenuItem(
             title: "Launch at Login",
@@ -262,6 +284,16 @@ final class MenuBarController {
         let enable = sender.state != .on
         setLoginItemEnabled(enable)
         sender.state = enable ? .on : .off
+    }
+
+    @objc private func toggleAutoDisconnect(_ sender: NSMenuItem) {
+        let enabled = sender.state != .on
+        sender.state = enabled ? .on : .off
+        UserDefaults.standard.set(enabled, forKey: "autoDisconnectDeadNetworks")
+    }
+
+    @objc private func disconnectAction(_ sender: NSMenuItem) {
+        onDisconnect?()
     }
 
     @objc private func exportLog(_ sender: NSMenuItem) {
