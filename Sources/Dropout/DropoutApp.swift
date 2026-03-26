@@ -7,21 +7,27 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
     private let eventLog = EventLog()
     private let menuBar = MenuBarController()
     private let locationManager = LocationManager()
+    private lazy var connectionQuality = ConnectionQuality(eventLog: eventLog)
+    private lazy var ispReport = ISPReport(eventLog: eventLog, connectionQuality: connectionQuality)
+
+    #if !APPSTORE
     private let webhookService = WebhookService()
+    #endif
 
     private var refreshTimer: Timer?
+
+    #if !APPSTORE
     private var deadNetworkTimer: Timer?
     private var deadNetworkSSID: String?
-
-    // Dead network detection: how long to wait with no internet before cycling
     private let deadNetworkTimeout: TimeInterval = 15
+    #endif
 
     // Throttling: prevent notification spam during WiFi flapping
     private var lastNotificationTime: [WiFiEventType: Date] = [:]
     private let throttleIntervals: [WiFiEventType: TimeInterval] = [
-        .disconnected: 5,       // Max one disconnect notification per 5s
-        .connected: 5,          // Max one reconnect notification per 5s
-        .signalDegraded: 30,    // Max one signal warning per 30s
+        .disconnected: 5,
+        .connected: 5,
+        .signalDegraded: 30,
         .signalRecovered: 30,
         .internetLost: 10,
         .internetRestored: 10,
@@ -35,18 +41,14 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerDefaults()
 
-        // First launch: show welcome dialog BEFORE requesting permissions
-        // This brings the app to the foreground (dock presence) so system
-        // prompts for Location Services appear reliably
+        // First launch onboarding
         let isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
         if isFirstLaunch {
             UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
             showWelcome()
         }
 
-        // Request location permission (required for SSID access on macOS 14+)
-        // On first launch, the app has dock presence from the welcome dialog,
-        // so the system Location Services prompt will appear in front
+        // Location Services (required for SSID on macOS 14+)
         locationManager.onAuthorizationChanged = { [weak self] authorized in
             if authorized {
                 let state = self?.wifiMonitor.currentState()
@@ -55,52 +57,60 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         }
         locationManager.requestAuthorization()
 
-        // Setup menu bar
+        // Menu bar
         menuBar.setup()
         menuBar.onExportLog = { [weak self] in self?.exportLog() }
+        menuBar.onExportReport = { [weak self] in self?.ispReport.saveReport() }
         menuBar.onQuit = { NSApp.terminate(nil) }
-        menuBar.onOpenHooksFolder = { [weak self] in self?.openHooksFolder() }
         menuBar.onShowAbout = { [weak self] in self?.showAbout() }
-        menuBar.onDisconnect = { [weak self] in self?.disconnectFromDeadNetwork() }
 
-        // Wire up WiFi monitor
+        #if !APPSTORE
+        menuBar.onOpenHooksFolder = { [weak self] in self?.openHooksFolder() }
+        menuBar.onDisconnect = { [weak self] in self?.disconnectFromDeadNetwork() }
+        #else
+        menuBar.onOpenWiFiSettings = { self.openWiFiSettings() }
+        #endif
+
+        // WiFi monitor
         wifiMonitor.onEvent = { [weak self] event in self?.handleEvent(event) }
         wifiMonitor.onStateChanged = { [weak self] state in
             self?.menuBar.updateWiFiState(state)
         }
 
-        // Wire up network monitor with dead network detection
+        // Network monitor
         networkMonitor.onInternetStatusChanged = { [weak self] reachable in
             guard let self else { return }
             self.menuBar.updateInternetStatus(reachable: reachable)
 
             if !reachable {
-                // Start dead network timer — if internet doesn't come back
-                // within the timeout, auto-disconnect from this network
                 let currentSSID = self.wifiMonitor.currentState().ssid
+
+                #if !APPSTORE
                 self.deadNetworkSSID = currentSSID
                 self.startDeadNetworkTimer()
+                #endif
 
                 let event = WiFiEvent(type: .internetLost, ssid: currentSSID)
                 self.handleEvent(event)
             } else {
-                // Internet is back — cancel dead network timer
+                #if !APPSTORE
                 self.cancelDeadNetworkTimer()
+                #endif
 
                 let event = WiFiEvent(type: .internetRestored, ssid: self.wifiMonitor.currentState().ssid)
                 self.handleEvent(event)
             }
         }
 
-        // Start monitoring
+        // Start
         wifiMonitor.start()
         networkMonitor.start()
 
-        // Initial UI state
+        // Initial state
         menuBar.updateInternetStatus(reachable: networkMonitor.isInternetReachable)
         refreshUI()
 
-        // Periodic refresh (stats + recent events)
+        // Periodic refresh (30s for stats, events, and connection quality)
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.refreshUI()
         }
@@ -115,13 +125,12 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
     // MARK: - Event Handling
 
     private func handleEvent(_ event: WiFiEvent) {
-        // Always log
         eventLog.log(event)
 
-        // Always fire webhooks (user controls which hooks exist)
+        #if !APPSTORE
         webhookService.fire(event: event)
+        #endif
 
-        // Throttle notifications
         guard shouldNotify(for: event.type) else {
             refreshUI()
             return
@@ -214,8 +223,9 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         return Date().timeIntervalSince(lastTime) >= interval
     }
 
-    // MARK: - Dead Network Detection
+    // MARK: - Dead Network (Direct distribution only)
 
+    #if !APPSTORE
     private func startDeadNetworkTimer() {
         cancelDeadNetworkTimer()
         let autoDisconnect = UserDefaults.standard.bool(forKey: "autoDisconnectDeadNetworks")
@@ -237,9 +247,6 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         guard state.isConnected, !networkMonitor.isInternetReachable else { return }
 
         let ssid = state.ssid ?? "current network"
-        print("dropout: dead network detected (\(ssid)) — disconnecting to find a better network")
-
-        // Disconnect — macOS will auto-join the next preferred saved network
         wifiMonitor.cycleConnection()
 
         notificationService.send(
@@ -248,11 +255,9 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
             sound: UserDefaults.standard.bool(forKey: "soundEnabled"),
             critical: false
         )
-
         deadNetworkSSID = nil
     }
 
-    /// Manual disconnect triggered from menu bar
     private func disconnectFromDeadNetwork() {
         let state = wifiMonitor.currentState()
         let ssid = state.ssid ?? "current network"
@@ -265,6 +270,23 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         )
     }
 
+    private func openHooksFolder() {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first!
+        let hooksDir = appSupport.appendingPathComponent("Dropout/hooks")
+        NSWorkspace.shared.open(hooksDir)
+    }
+    #endif
+
+    // MARK: - WiFi Settings (App Store builds — can't auto-disconnect, open settings instead)
+
+    private func openWiFiSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.network?Wi-Fi") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     // MARK: - UI Refresh
 
     private func refreshUI() {
@@ -273,6 +295,19 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
 
         let stats = eventLog.todayStats()
         menuBar.updateStats(disconnects: stats.disconnects, downtime: stats.totalDowntime)
+
+        // Connection quality grade
+        let report = connectionQuality.currentReport()
+        menuBar.updateConnectionQuality(report)
+
+        // Network reliability for known networks
+        let networks = eventLog.knownNetworks()
+        var reliability: [(ssid: String, uptime: Double, disconnects: Int)] = []
+        for ssid in networks.prefix(5) {
+            let stats = connectionQuality.networkReliability(ssid: ssid)
+            reliability.append((ssid: ssid, uptime: stats.uptime, disconnects: stats.disconnects))
+        }
+        menuBar.updateNetworkReliability(reliability)
     }
 
     // MARK: - Export
@@ -290,16 +325,6 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Hooks Folder
-
-    private func openHooksFolder() {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory, in: .userDomainMask
-        ).first!
-        let hooksDir = appSupport.appendingPathComponent("Dropout/hooks")
-        NSWorkspace.shared.open(hooksDir)
-    }
-
     // MARK: - About
 
     private func showAbout() {
@@ -311,15 +336,11 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
             Event-driven WiFi disconnect notifier for macOS.
             Uses CoreWLAN — zero polling, zero battery impact.
 
-            © 2026 Jesse Meria
-            MIT License
-
-            github.com/jessemeria/dropout
+            \u{00A9} 2026 Jesse Meria
             """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
 
-        // Bring app to front for the alert
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
@@ -337,8 +358,8 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
 
             You'll be asked to grant two permissions:
 
-            • Notifications — so Dropout can alert you
-            • Location — required by macOS to read WiFi network names \
+            \u{2022} Notifications — so Dropout can alert you
+            \u{2022} Location — required by macOS to read WiFi network names \
             (your location is never stored or sent anywhere)
 
             Look for the WiFi icon in your menu bar.

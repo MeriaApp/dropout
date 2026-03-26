@@ -8,7 +8,7 @@ VERSION="1.0.0"
 BUILD_NUMBER="1"
 DEVELOPER_ID="Developer ID Application: JESSE ROBERT MERIA (36D97ZTP6J)"
 TEAM_ID="36D97ZTP6J"
-ENTITLEMENTS="App/Dropout.entitlements"
+ENTITLEMENTS="App/Dropout-DirectDistribution.entitlements"
 
 # Paths
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

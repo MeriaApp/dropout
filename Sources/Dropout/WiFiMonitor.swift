@@ -108,8 +108,10 @@ final class WiFiMonitor: NSObject {
         )
     }
 
+    #if !APPSTORE
     /// Disconnect from the current network without removing it from saved networks.
     /// macOS will then auto-join the next preferred saved network.
+    /// Not available in App Store builds (sandbox blocks disassociate).
     func disconnectFromCurrentNetwork() {
         guard let iface = client.interface() else { return }
         iface.disassociate()
@@ -121,12 +123,9 @@ final class WiFiMonitor: NSObject {
         guard let iface = client.interface() else { return }
         let ssid = iface.ssid()
         iface.disassociate()
-
-        // macOS auto-reconnects to preferred networks after disassociate.
-        // If it picks the same dead network, we'll catch it again via
-        // the dead network detection flow.
         print("dropout: disconnected from \(ssid ?? "unknown") — waiting for auto-rejoin")
     }
+    #endif
 }
 
 // MARK: - CWEventDelegate

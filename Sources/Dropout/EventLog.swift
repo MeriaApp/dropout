@@ -92,6 +92,48 @@ final class EventLog {
         return events
     }
 
+    func eventsInRange(from start: Date, to end: Date) -> [WiFiEvent] {
+        var events: [WiFiEvent] = []
+        queue.sync {
+            guard let db else { return }
+            let sql = """
+                SELECT id, timestamp, type, ssid, bssid, rssi, transmit_rate, details
+                FROM events WHERE timestamp >= ? AND timestamp <= ?
+                ORDER BY timestamp ASC
+                """
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+
+            sqlite3_bind_double(stmt, 1, start.timeIntervalSince1970)
+            sqlite3_bind_double(stmt, 2, end.timeIntervalSince1970)
+
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                events.append(readEvent(from: stmt))
+            }
+        }
+        return events
+    }
+
+    /// Returns all unique SSIDs seen in the database
+    func knownNetworks() -> [String] {
+        var networks: [String] = []
+        queue.sync {
+            guard let db else { return }
+            let sql = "SELECT DISTINCT ssid FROM events WHERE ssid IS NOT NULL ORDER BY ssid"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let cStr = sqlite3_column_text(stmt, 0) {
+                    networks.append(String(cString: cStr))
+                }
+            }
+        }
+        return networks
+    }
+
     func todayStats() -> (disconnects: Int, totalDowntime: TimeInterval) {
         var disconnects = 0
         var totalDowntime: TimeInterval = 0

@@ -5,25 +5,37 @@ final class MenuBarController {
     private var statusItem: NSStatusItem!
     private var menu: NSMenu!
 
-    // Menu item references for updates
+    // Menu item references
     private var statusMenuItem: NSMenuItem!
     private var signalMenuItem: NSMenuItem!
     private var internetMenuItem: NSMenuItem!
-    private var separatorAfterStatus: NSMenuItem!
+    private var qualityMenuItem: NSMenuItem!
     private var recentHeaderItem: NSMenuItem!
     private var statsMenuItem: NSMenuItem!
-    private var disconnectButton: NSMenuItem!
+    private var reliabilityHeaderItem: NSMenuItem!
     private var soundToggle: NSMenuItem!
     private var signalWarningToggle: NSMenuItem!
-    private var autoDisconnectToggle: NSMenuItem!
     private var loginToggle: NSMenuItem!
     private var recentEventItems: [NSMenuItem] = []
+    private var reliabilityItems: [NSMenuItem] = []
 
+    #if !APPSTORE
+    private var disconnectButton: NSMenuItem!
+    private var autoDisconnectToggle: NSMenuItem!
+    #endif
+
+    // Callbacks
     var onExportLog: (() -> Void)?
-    var onOpenHooksFolder: (() -> Void)?
+    var onExportReport: (() -> Void)?
     var onShowAbout: (() -> Void)?
-    var onDisconnect: (() -> Void)?
     var onQuit: (() -> Void)?
+
+    #if !APPSTORE
+    var onOpenHooksFolder: (() -> Void)?
+    var onDisconnect: (() -> Void)?
+    #else
+    var onOpenWiFiSettings: (() -> Void)?
+    #endif
 
     func setup() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -37,7 +49,7 @@ final class MenuBarController {
         menu = NSMenu()
         menu.autoenablesItems = false
 
-        // Status section
+        // ── Status Section ──
         statusMenuItem = NSMenuItem(title: "Checking...", action: nil, keyEquivalent: "")
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
@@ -50,6 +62,11 @@ final class MenuBarController {
         internetMenuItem.isEnabled = false
         menu.addItem(internetMenuItem)
 
+        qualityMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        qualityMenuItem.isEnabled = false
+        menu.addItem(qualityMenuItem)
+
+        #if !APPSTORE
         disconnectButton = NSMenuItem(
             title: "Disconnect from This Network",
             action: #selector(disconnectAction(_:)),
@@ -57,36 +74,41 @@ final class MenuBarController {
         )
         disconnectButton.keyEquivalentModifierMask = .command
         disconnectButton.target = self
-        disconnectButton.isHidden = false
         menu.addItem(disconnectButton)
-
-        separatorAfterStatus = NSMenuItem.separator()
-        menu.addItem(separatorAfterStatus)
-
-        // Recent events header
-        recentHeaderItem = NSMenuItem(title: "Recent Events", action: nil, keyEquivalent: "")
-        recentHeaderItem.isEnabled = false
-        let headerFont = NSFont.systemFont(ofSize: 11, weight: .semibold)
-        recentHeaderItem.attributedTitle = NSAttributedString(
-            string: "RECENT EVENTS",
-            attributes: [
-                .font: headerFont,
-                .foregroundColor: NSColor.secondaryLabelColor,
-            ]
+        #else
+        let wifiSettingsBtn = NSMenuItem(
+            title: "Open WiFi Settings...",
+            action: #selector(openWiFiSettingsAction(_:)),
+            keyEquivalent: "d"
         )
-        menu.addItem(recentHeaderItem)
+        wifiSettingsBtn.keyEquivalentModifierMask = .command
+        wifiSettingsBtn.target = self
+        menu.addItem(wifiSettingsBtn)
+        #endif
 
-        // Placeholder for recent events (populated dynamically)
         menu.addItem(NSMenuItem.separator())
 
-        // Stats
+        // ── Recent Events ──
+        recentHeaderItem = sectionHeader("RECENT EVENTS")
+        menu.addItem(recentHeaderItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // ── Stats ──
         statsMenuItem = NSMenuItem(title: "No data yet", action: nil, keyEquivalent: "")
         statsMenuItem.isEnabled = false
         menu.addItem(statsMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // Preferences
+        // ── Network Reliability ──
+        reliabilityHeaderItem = sectionHeader("NETWORK RELIABILITY")
+        reliabilityHeaderItem.isHidden = true
+        menu.addItem(reliabilityHeaderItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // ── Preferences ──
         soundToggle = NSMenuItem(
             title: "Sound Alerts",
             action: #selector(toggleSound(_:)),
@@ -105,6 +127,7 @@ final class MenuBarController {
         signalWarningToggle.state = UserDefaults.standard.bool(forKey: "signalWarningsEnabled") ? .on : .off
         menu.addItem(signalWarningToggle)
 
+        #if !APPSTORE
         autoDisconnectToggle = NSMenuItem(
             title: "Auto-Leave Dead Networks",
             action: #selector(toggleAutoDisconnect(_:)),
@@ -113,6 +136,7 @@ final class MenuBarController {
         autoDisconnectToggle.target = self
         autoDisconnectToggle.state = UserDefaults.standard.bool(forKey: "autoDisconnectDeadNetworks") ? .on : .off
         menu.addItem(autoDisconnectToggle)
+        #endif
 
         loginToggle = NSMenuItem(
             title: "Launch at Login",
@@ -125,8 +149,9 @@ final class MenuBarController {
 
         menu.addItem(NSMenuItem.separator())
 
+        // ── Export ──
         let exportItem = NSMenuItem(
-            title: "Export Log...",
+            title: "Export Log (CSV)...",
             action: #selector(exportLog(_:)),
             keyEquivalent: "e"
         )
@@ -134,19 +159,31 @@ final class MenuBarController {
         exportItem.target = self
         menu.addItem(exportItem)
 
+        let reportItem = NSMenuItem(
+            title: "Generate ISP Report...",
+            action: #selector(exportReport(_:)),
+            keyEquivalent: "r"
+        )
+        reportItem.keyEquivalentModifierMask = .command
+        reportItem.target = self
+        menu.addItem(reportItem)
+
+        #if !APPSTORE
         let hooksItem = NSMenuItem(
             title: "Event Hooks...",
-            action: #selector(openHooksFolder(_:)),
+            action: #selector(openHooksFolderAction(_:)),
             keyEquivalent: ""
         )
         hooksItem.target = self
         menu.addItem(hooksItem)
+        #endif
 
         menu.addItem(NSMenuItem.separator())
 
+        // ── Footer ──
         let aboutItem = NSMenuItem(
             title: "About Dropout",
-            action: #selector(showAbout(_:)),
+            action: #selector(showAboutAction(_:)),
             keyEquivalent: ""
         )
         aboutItem.target = self
@@ -172,17 +209,12 @@ final class MenuBarController {
             signalMenuItem.title = "Signal: \(state.signalQuality.rawValue) (\(state.rssi) dBm)"
             signalMenuItem.isHidden = false
 
-            // Update menu bar icon
             let iconName: String
             switch state.signalQuality {
-            case .excellent, .good:
-                iconName = "wifi"
-            case .fair:
-                iconName = "wifi"
-            case .weak:
-                iconName = "wifi.exclamationmark"
-            case .none:
-                iconName = "wifi.slash"
+            case .excellent, .good: iconName = "wifi"
+            case .fair: iconName = "wifi"
+            case .weak: iconName = "wifi.exclamationmark"
+            case .none: iconName = "wifi.slash"
             }
             statusItem.button?.image = NSImage(
                 systemSymbolName: iconName,
@@ -210,46 +242,29 @@ final class MenuBarController {
         internetMenuItem.isHidden = false
     }
 
+    func updateConnectionQuality(_ report: ConnectionQuality.Report) {
+        qualityMenuItem.title = report.summaryLine
+        qualityMenuItem.isHidden = false
+    }
+
     func updateRecentEvents(_ events: [WiFiEvent]) {
-        // Remove old event items
-        for item in recentEventItems {
-            menu.removeItem(item)
-        }
+        for item in recentEventItems { menu.removeItem(item) }
         recentEventItems.removeAll()
 
-        // Find insertion point (after recent header)
         let headerIndex = menu.index(of: recentHeaderItem)
         guard headerIndex >= 0 else { return }
         var insertIndex = headerIndex + 1
 
         if events.isEmpty {
-            let noEvents = NSMenuItem(title: "  No events yet", action: nil, keyEquivalent: "")
-            noEvents.isEnabled = false
-            noEvents.attributedTitle = NSAttributedString(
-                string: "  No events yet",
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: 12),
-                    .foregroundColor: NSColor.tertiaryLabelColor,
-                ]
-            )
-            menu.insertItem(noEvents, at: insertIndex)
-            recentEventItems.append(noEvents)
+            let item = styledMenuItem("  No events yet", color: .tertiaryLabelColor)
+            menu.insertItem(item, at: insertIndex)
+            recentEventItems.append(item)
         } else {
             for event in events.prefix(8) {
-                let dot = event.isNegative ? "\u{25CF}" : "\u{25CB}"  // filled/hollow circle
+                let dot = event.isNegative ? "\u{25CF}" : "\u{25CB}"
                 let title = "  \(event.timeString)  \(dot) \(event.displayString)"
-                let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-                item.isEnabled = false
-
                 let color: NSColor = event.isNegative ? .systemRed : .secondaryLabelColor
-                item.attributedTitle = NSAttributedString(
-                    string: title,
-                    attributes: [
-                        .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular),
-                        .foregroundColor: color,
-                    ]
-                )
-
+                let item = styledMenuItem(title, color: color, mono: true)
                 menu.insertItem(item, at: insertIndex)
                 recentEventItems.append(item)
                 insertIndex += 1
@@ -263,6 +278,29 @@ final class MenuBarController {
         } else {
             let dtStr = formatDowntime(downtime)
             statsMenuItem.title = "Today: \(disconnects) drop\(disconnects == 1 ? "" : "s"), \(dtStr) downtime"
+        }
+    }
+
+    func updateNetworkReliability(_ networks: [(ssid: String, uptime: Double, disconnects: Int)]) {
+        for item in reliabilityItems { menu.removeItem(item) }
+        reliabilityItems.removeAll()
+
+        let relevant = networks.filter { $0.disconnects > 0 }
+        reliabilityHeaderItem.isHidden = relevant.isEmpty
+
+        guard !relevant.isEmpty else { return }
+
+        let headerIndex = menu.index(of: reliabilityHeaderItem)
+        guard headerIndex >= 0 else { return }
+        var insertIndex = headerIndex + 1
+
+        for net in relevant.prefix(5) {
+            let uptimeStr = String(format: "%.1f%%", net.uptime)
+            let title = "  \(net.ssid) — \(uptimeStr) uptime, \(net.disconnects) drops"
+            let item = styledMenuItem(title, color: .secondaryLabelColor, mono: false)
+            menu.insertItem(item, at: insertIndex)
+            reliabilityItems.append(item)
+            insertIndex += 1
         }
     }
 
@@ -286,6 +324,7 @@ final class MenuBarController {
         sender.state = enable ? .on : .off
     }
 
+    #if !APPSTORE
     @objc private func toggleAutoDisconnect(_ sender: NSMenuItem) {
         let enabled = sender.state != .on
         sender.state = enabled ? .on : .off
@@ -296,15 +335,24 @@ final class MenuBarController {
         onDisconnect?()
     }
 
+    @objc private func openHooksFolderAction(_ sender: NSMenuItem) {
+        onOpenHooksFolder?()
+    }
+    #else
+    @objc private func openWiFiSettingsAction(_ sender: NSMenuItem) {
+        onOpenWiFiSettings?()
+    }
+    #endif
+
     @objc private func exportLog(_ sender: NSMenuItem) {
         onExportLog?()
     }
 
-    @objc private func openHooksFolder(_ sender: NSMenuItem) {
-        onOpenHooksFolder?()
+    @objc private func exportReport(_ sender: NSMenuItem) {
+        onExportReport?()
     }
 
-    @objc private func showAbout(_ sender: NSMenuItem) {
+    @objc private func showAboutAction(_ sender: NSMenuItem) {
         onShowAbout?()
     }
 
@@ -312,7 +360,7 @@ final class MenuBarController {
         onQuit?()
     }
 
-    // MARK: - Login Item (SMAppService for macOS 13+)
+    // MARK: - Login Item
 
     private func isLoginItemEnabled() -> Bool {
         if #available(macOS 13.0, *) {
@@ -336,6 +384,32 @@ final class MenuBarController {
     }
 
     // MARK: - Helpers
+
+    private func sectionHeader(_ title: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        item.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ]
+        )
+        return item
+    }
+
+    private func styledMenuItem(_ title: String, color: NSColor, mono: Bool = false) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        let font = mono
+            ? NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+            : NSFont.systemFont(ofSize: 12)
+        item.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [.font: font, .foregroundColor: color]
+        )
+        return item
+    }
 
     private func formatDowntime(_ seconds: TimeInterval) -> String {
         if seconds < 60 {
