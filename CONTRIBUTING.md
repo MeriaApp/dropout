@@ -1,12 +1,12 @@
-# Contributing to Dropout
+# Contributing to SignalDrop
 
-Dropout is open source and contributions are welcome.
+SignalDrop is open source and contributions are welcome.
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/MeriaApp/dropout.git
-cd dropout
+git clone https://github.com/MeriaApp/signaldrop.git
+cd signaldrop
 swift build
 ```
 
@@ -19,7 +19,7 @@ The project uses Swift Package Manager. No Xcode project needed — `swift build
 ```bash
 swift build              # Debug build
 swift build -c release   # Release build
-.build/debug/dropout     # Run debug build
+.build/debug/signaldrop     # Run debug build
 ```
 
 ## Project Structure
@@ -27,7 +27,7 @@ swift build -c release   # Release build
 | File | Purpose |
 |------|---------|
 | `main.swift` | App entry point, NSApplication setup |
-| `DropoutApp.swift` | App delegate, coordinates all components |
+| `SignalDropApp.swift` | App delegate, coordinates all components |
 | `WiFiMonitor.swift` | CoreWLAN event-driven WiFi monitoring |
 | `NetworkMonitor.swift` | NWPathMonitor for internet reachability |
 | `NotificationService.swift` | macOS notification delivery |
@@ -46,7 +46,7 @@ swift build -c release   # Release build
 
 ## Reporting Bugs
 
-Use the [bug report template](https://github.com/MeriaApp/dropout/issues/new?template=bug_report.md). Include your macOS version and an event log export if relevant.
+Use the [bug report template](https://github.com/MeriaApp/signaldrop/issues/new?template=bug_report.md). Include your macOS version and an event log export if relevant.
 
 ## License
 

@@ -19,7 +19,7 @@ What should have happened instead.
 
 **Environment**
 - macOS version:
-- Dropout version:
+- SignalDrop version:
 - WiFi hardware: (if relevant)
 
 **Screenshots**

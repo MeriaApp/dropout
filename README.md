@@ -1,24 +1,24 @@
-# Dropout
+# SignalDrop
 
 A lightweight macOS menu bar app that notifies you the instant your WiFi drops.
 
 macOS silently drops WiFi and hopes you notice. You're on a Zoom call, pushing code, or downloading something important — and the connection just vanishes. No notification. No sound. Nothing. You find out minutes later when things stop working.
 
-**Dropout** fixes that. It uses Apple's CoreWLAN framework for **event-driven** monitoring (zero polling, zero battery impact) and sends a native macOS notification the moment your connection drops.
+**SignalDrop** fixes that. It uses Apple's CoreWLAN framework for **event-driven** monitoring (zero polling, zero battery impact) and sends a native macOS notification the moment your connection drops.
 
 ## Install
 
 ### Download (recommended)
 
-Download `Dropout-1.0.0.dmg` from the [Releases](https://github.com/jessemeria/dropout/releases) page. Open the DMG and drag Dropout to your Applications folder.
+Download `SignalDrop-1.0.0.dmg` from the [Releases](https://github.com/MeriaApp/signaldrop/releases) page. Open the DMG and drag SignalDrop to your Applications folder.
 
 ### Build from source
 
 ```bash
-git clone https://github.com/jessemeria/dropout.git
-cd dropout
+git clone https://github.com/MeriaApp/signaldrop.git
+cd signaldrop
 ./Scripts/build-app.sh
-open .build/app/Dropout.app
+open .build/app/SignalDrop.app
 ```
 
 ## Features
@@ -37,7 +37,7 @@ open .build/app/Dropout.app
 
 ## How It Works
 
-Unlike shell-script hacks that poll every N seconds, Dropout registers for CoreWLAN events directly. The OS tells Dropout when something changes — no polling loop, no wasted battery, no missed events between polls.
+Unlike shell-script hacks that poll every N seconds, SignalDrop registers for CoreWLAN events directly. The OS tells SignalDrop when something changes — no polling loop, no wasted battery, no missed events between polls.
 
 | Monitor | What it catches |
 |---------|----------------|
@@ -70,8 +70,8 @@ Click the WiFi icon in your menu bar:
   Export Log...
   Event Hooks...
   ─────────────────────────────
-  About Dropout
-  Quit Dropout
+  About SignalDrop
+  Quit SignalDrop
 ```
 
 ## Event Hooks
@@ -79,7 +79,7 @@ Click the WiFi icon in your menu bar:
 Run custom scripts when WiFi events happen. Place executable `.sh` files in:
 
 ```
-~/Library/Application Support/Dropout/hooks/
+~/Library/Application Support/SignalDrop/hooks/
 ```
 
 Available hooks:
@@ -93,24 +93,24 @@ Available hooks:
 | `on-internet-lost.sh` | WiFi up, no internet |
 | `on-internet-restored.sh` | Internet back |
 
-Each script receives environment variables: `DROPOUT_EVENT`, `DROPOUT_SSID`, `DROPOUT_BSSID`, `DROPOUT_RSSI`, `DROPOUT_DETAILS`, `DROPOUT_TIMESTAMP`.
+Each script receives environment variables: `SIGNALDROP_EVENT`, `SIGNALDROP_SSID`, `SIGNALDROP_BSSID`, `SIGNALDROP_RSSI`, `SIGNALDROP_DETAILS`, `SIGNALDROP_TIMESTAMP`.
 
 **Example** — post to Slack when WiFi drops:
 
 ```bash
 #!/bin/bash
 curl -X POST "https://hooks.slack.com/your/webhook" \
-  -d "{\"text\":\"WiFi dropped from $DROPOUT_SSID at $(date)\"}"
+  -d "{\"text\":\"WiFi dropped from $SIGNALDROP_SSID at $(date)\"}"
 ```
 
 ## Data
 
 | What | Where |
 |------|-------|
-| Event database | `~/Library/Application Support/Dropout/events.db` |
-| Hook scripts | `~/Library/Application Support/Dropout/hooks/` |
-| Hook log | `~/Library/Application Support/Dropout/hooks.log` |
-| Preferences | UserDefaults (`com.meria.dropout`) |
+| Event database | `~/Library/Application Support/SignalDrop/events.db` |
+| Hook scripts | `~/Library/Application Support/SignalDrop/hooks/` |
+| Hook log | `~/Library/Application Support/SignalDrop/hooks.log` |
+| Preferences | UserDefaults (`com.meria.signaldrop`) |
 
 Export your connection history as CSV from the menu bar for troubleshooting with your ISP.
 
@@ -121,24 +121,24 @@ Export your connection history as CSV from the menu bar for troubleshooting with
 
 ## Permissions
 
-On first launch, Dropout asks for two permissions:
+On first launch, SignalDrop asks for two permissions:
 
 1. **Notifications** — to alert you when WiFi drops
 2. **Location Services** — required by macOS to read WiFi network names (your location is never stored or sent anywhere)
 
-If you skip Location Services, Dropout still monitors connect/disconnect events but can't display network names.
+If you skip Location Services, SignalDrop still monitors connect/disconnect events but can't display network names.
 
 ## Privacy
 
-Dropout runs entirely on your Mac. No data is sent anywhere. No analytics. No telemetry. No network requests. It reads your local WiFi state through Apple's public CoreWLAN API and stores events in a local SQLite database.
+SignalDrop runs entirely on your Mac. No data is sent anywhere. No analytics. No telemetry. No network requests. It reads your local WiFi state through Apple's public CoreWLAN API and stores events in a local SQLite database.
 
 ## Uninstall
 
-1. Quit Dropout from the menu bar
-2. Delete `Dropout.app` from Applications
-3. Optionally remove data: `rm -rf ~/Library/Application\ Support/Dropout`
+1. Quit SignalDrop from the menu bar
+2. Delete `SignalDrop.app` from Applications
+3. Optionally remove data: `rm -rf ~/Library/Application\ Support/SignalDrop`
 
-## Why "Dropout"?
+## Why "SignalDrop"?
 
 It's what your WiFi does when you're not looking.
 

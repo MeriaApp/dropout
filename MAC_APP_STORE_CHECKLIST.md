@@ -1,4 +1,4 @@
-# Dropout -- Mac App Store Submission Checklist
+# SignalDrop -- Mac App Store Submission Checklist
 
 Research date: March 2026. Based on current Apple requirements and developer experience.
 
@@ -6,7 +6,7 @@ Research date: March 2026. Based on current Apple requirements and developer exp
 
 ## CRITICAL BLOCKERS (Read First)
 
-Before doing anything else, understand that Dropout has three features that **will not work in the Mac App Store sandbox**:
+Before doing anything else, understand that SignalDrop has three features that **will not work in the Mac App Store sandbox**:
 
 | Feature | Why It Breaks | Fix |
 |---------|---------------|-----|
@@ -30,7 +30,7 @@ func disconnectFromCurrentNetwork()  // calls disassociate()
 func cycleConnection()               // calls disassociate()
 ```
 
-**File:** `DropoutApp.swift:235-266`
+**File:** `SignalDropApp.swift:235-266`
 - Remove `disconnectFromDeadNetwork()`
 - Remove or rework `handleDeadNetwork()` to only notify (no auto-disconnect)
 - Remove `menuBar.onDisconnect` wiring
@@ -50,7 +50,7 @@ Option B: Replace `Process()` with `NSUserUnixTask`. Scripts must live in `~/Lib
 
 ### 1.3 Fix Entitlements
 
-**File:** `App/Dropout.entitlements` -- replace contents with:
+**File:** `App/SignalDrop.entitlements` -- replace contents with:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -135,7 +135,7 @@ Option A (recommended): Create a new Xcode project from scratch.
 
 ```
 Xcode > File > New > Project > macOS > App
-- Product Name: Dropout
+- Product Name: SignalDrop
 - Team: JESSE ROBERT MERIA (36D97ZTP6J)
 - Organization Identifier: com.meria
 - Bundle Identifier: com.meria.dropout
@@ -146,7 +146,7 @@ Xcode > File > New > Project > macOS > App
 
 Then:
 1. Delete the auto-generated template files (AppDelegate.swift, main.swift from template, etc.)
-2. Add all files from `Sources/Dropout/` to the Xcode target
+2. Add all files from `Sources/SignalDrop/` to the Xcode target
 3. Add framework dependencies: CoreWLAN, CoreLocation, Network, ServiceManagement, SystemConfiguration
 4. Copy your existing `App/Info.plist` values into the Xcode-managed Info.plist
 5. Copy your entitlements into the Xcode-managed entitlements file
@@ -156,7 +156,7 @@ Option B: Generate from SPM with `swift package generate-xcodeproj` (deprecated 
 
 ### 2.2 Configure Signing & Capabilities in Xcode
 
-1. Select the Dropout target > Signing & Capabilities
+1. Select the SignalDrop target > Signing & Capabilities
 2. Team: **JESSE ROBERT MERIA (36D97ZTP6J)**
 3. Signing Certificate: **Apple Distribution: JESSE ROBERT MERIA (36D97ZTP6J)** (you have this)
 4. Enable **App Sandbox** capability -- this adds the sandbox entitlement
@@ -170,7 +170,7 @@ Option B: Generate from SPM with `swift package generate-xcodeproj` (deprecated 
 
 ```bash
 # Build for release
-xcodebuild -project Dropout.xcodeproj -scheme Dropout -configuration Release build
+xcodebuild -project SignalDrop.xcodeproj -scheme SignalDrop -configuration Release build
 
 # Run the sandboxed app and verify:
 # - WiFi SSID appears in menu bar (requires Location permission)
@@ -183,7 +183,7 @@ xcodebuild -project Dropout.xcodeproj -scheme Dropout -configuration Release bui
 # - UserDefaults persist correctly
 ```
 
-**Important sandbox behavior change:** With sandbox enabled, `~/Library/Application Support/Dropout/` moves to `~/Library/Containers/com.meria.dropout/Data/Library/Application Support/Dropout/`. The code uses `FileManager.default.urls(for:in:)` which handles this automatically.
+**Important sandbox behavior change:** With sandbox enabled, `~/Library/Application Support/SignalDrop/` moves to `~/Library/Containers/com.meria.dropout/Data/Library/Application Support/SignalDrop/`. The code uses `FileManager.default.urls(for:in:)` which handles this automatically.
 
 ---
 
@@ -194,7 +194,7 @@ xcodebuild -project Dropout.xcodeproj -scheme Dropout -configuration Release bui
 1. Go to https://developer.apple.com/account/resources/identifiers
 2. Click "+" to register a new App ID
 3. Select "App IDs" > "App"
-4. Description: "Dropout"
+4. Description: "SignalDrop"
 5. Bundle ID: Explicit > `com.meria.dropout`
 6. Capabilities: check only what you need (no special capabilities needed beyond defaults)
 7. Register
@@ -205,7 +205,7 @@ xcodebuild -project Dropout.xcodeproj -scheme Dropout -configuration Release bui
 2. Click "+" > Mac App Store
 3. Select App ID: `com.meria.dropout`
 4. Select Certificate: **Apple Distribution: JESSE ROBERT MERIA (36D97ZTP6J)**
-5. Name it: "Dropout Mac App Store"
+5. Name it: "SignalDrop Mac App Store"
 6. Download and double-click to install
 
 **Note:** If you use Automatic Signing in Xcode (recommended), Xcode manages provisioning profiles automatically.
@@ -215,7 +215,7 @@ xcodebuild -project Dropout.xcodeproj -scheme Dropout -configuration Release bui
 1. Go to https://appstoreconnect.apple.com
 2. My Apps > "+" > New App
 3. Platform: **macOS**
-4. Name: **Dropout**
+4. Name: **SignalDrop**
 5. Primary Language: English (U.S.)
 6. Bundle ID: com.meria.dropout
 7. SKU: `dropout-mac` (any unique string)
@@ -225,7 +225,7 @@ xcodebuild -project Dropout.xcodeproj -scheme Dropout -configuration Release bui
 
 For a one-time paid app at $3.99:
 
-1. In App Store Connect > Dropout > Pricing and Availability
+1. In App Store Connect > SignalDrop > Pricing and Availability
 2. Price Schedule > Add Base Price
 3. Base country: United States
 4. Price: $3.99 (Price Tier -- select from the ~800 price points; $3.99 is available)
@@ -275,13 +275,13 @@ Write compelling copy. Key points:
 **Required for all apps**, even apps that collect no data.
 
 Host a simple privacy policy page. It should state:
-- Dropout does not collect, store, or transmit any personal data
+- SignalDrop does not collect, store, or transmit any personal data
 - WiFi event data is stored locally on your Mac only
 - Location permission is used solely to display your WiFi network name (Apple requires this for SSID access)
 - No analytics, no tracking, no third-party services
 - Contact email for privacy questions
 
-Host at: `https://jessemeria.com/dropout/privacy` or similar.
+Host at: `https://jessemeria.com/signaldrop/privacy` or similar.
 
 ### 4.5 Privacy Nutrition Labels
 
@@ -313,10 +313,10 @@ Product > Archive
 
 Or via command line:
 ```bash
-xcodebuild -project Dropout.xcodeproj \
-  -scheme Dropout \
+xcodebuild -project SignalDrop.xcodeproj \
+  -scheme SignalDrop \
   -configuration Release \
-  -archivePath ~/Desktop/Dropout.xcarchive \
+  -archivePath ~/Desktop/SignalDrop.xcarchive \
   archive
 ```
 
@@ -352,13 +352,13 @@ EOF
 
 # Export
 xcodebuild -exportArchive \
-  -archivePath ~/Desktop/Dropout.xcarchive \
-  -exportPath ~/Desktop/DropoutExport \
+  -archivePath ~/Desktop/SignalDrop.xcarchive \
+  -exportPath ~/Desktop/SignalDropExport \
   -exportOptionsPlist /tmp/ExportOptions.plist
 
 # Upload (xcrun altool or Transporter app)
 xcrun altool --upload-app \
-  -f ~/Desktop/DropoutExport/Dropout.pkg \
+  -f ~/Desktop/SignalDropExport/SignalDrop.pkg \
   -t macos \
   -u YOUR_APPLE_ID \
   -p YOUR_APP_SPECIFIC_PASSWORD
@@ -368,7 +368,7 @@ xcrun altool --upload-app \
 
 1. In App Store Connect, select the uploaded build
 2. Fill in "What's New" (for v1.0: leave blank or write initial release notes)
-3. Answer the export compliance question (Dropout uses no encryption beyond standard HTTPS = select "No")
+3. Answer the export compliance question (SignalDrop uses no encryption beyond standard HTTPS = select "No")
 4. Click "Submit for Review"
 
 ---
@@ -381,7 +381,7 @@ xcrun altool --upload-app \
 - First submissions often take longer and receive more scrutiny
 - Expedited review is available for urgent cases
 
-### 6.2 Common Rejection Risks for Dropout
+### 6.2 Common Rejection Risks for SignalDrop
 
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
