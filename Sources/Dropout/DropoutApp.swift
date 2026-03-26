@@ -30,15 +30,25 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerDefaults()
 
+        // First launch: show welcome dialog BEFORE requesting permissions
+        // This brings the app to the foreground (dock presence) so system
+        // prompts for Location Services appear reliably
+        let isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
+        if isFirstLaunch {
+            UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+            showWelcome()
+        }
+
         // Request location permission (required for SSID access on macOS 14+)
-        locationManager.requestAuthorization()
+        // On first launch, the app has dock presence from the welcome dialog,
+        // so the system Location Services prompt will appear in front
         locationManager.onAuthorizationChanged = { [weak self] authorized in
             if authorized {
-                // Re-read state now that we can see the SSID
                 let state = self?.wifiMonitor.currentState()
                 if let state { self?.menuBar.updateWiFiState(state) }
             }
         }
+        locationManager.requestAuthorization()
 
         // Setup menu bar
         menuBar.setup()
@@ -74,12 +84,6 @@ final class DropoutApp: NSObject, NSApplicationDelegate {
         // Periodic refresh (stats + recent events)
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.refreshUI()
-        }
-
-        // First launch onboarding
-        if !UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
-            UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
-            showWelcome()
         }
     }
 
