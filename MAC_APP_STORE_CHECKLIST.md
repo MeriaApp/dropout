@@ -11,7 +11,7 @@ Before doing anything else, understand that SignalDrop has three features that *
 | Feature | Why It Breaks | Fix |
 |---------|---------------|-----|
 | `CWInterface.disassociate()` | Sandbox prohibits modifying network configuration | Remove or disable. Read-only WiFi monitoring is allowed. |
-| `WebhookService` (Process/bash) | Sandbox prohibits launching arbitrary processes | Replace with `NSUserUnixTask` using `~/Library/Application Scripts/com.meria.dropout/` directory, or remove entirely |
+| `WebhookService` (Process/bash) | Sandbox prohibits launching arbitrary processes | Replace with `NSUserUnixTask` using `~/Library/Application Scripts/com.meria.signaldrop/` directory, or remove entirely |
 | `com.apple.security.automation.apple-events` | Scrutinized heavily by App Review; current code doesn't appear to use it | Remove from entitlements |
 
 **CoreWLAN reading (SSID, RSSI, BSSID, event monitoring) DOES work in sandbox.** Multiple WiFi monitoring apps are live on the Mac App Store (WiFi Signal, Wifiry, NetSpot). Since WWDC 2018, CoreWLAN was officially allowed in the sandbox for read operations via `CWWiFiClient.shared().interface()`.
@@ -44,7 +44,7 @@ func cycleConnection()               // calls disassociate()
 
 Option A (recommended for v1): **Remove WebhookService entirely.** Ship without hooks for the Mac App Store version. Keep it for the direct-download/Homebrew version via `#if APPSTORE` compilation flag.
 
-Option B: Replace `Process()` with `NSUserUnixTask`. Scripts must live in `~/Library/Application Scripts/com.meria.dropout/`. The app can read from but NOT write to this directory. The user must place scripts there manually or via Finder.
+Option B: Replace `Process()` with `NSUserUnixTask`. Scripts must live in `~/Library/Application Scripts/com.meria.signaldrop/`. The app can read from but NOT write to this directory. The user must place scripts there manually or via Finder.
 
 **Important:** App Review scrutinizes `NSUserUnixTask` usage heavily. They want it used as a genuine user-facing scripting feature, not as a sandbox escape.
 
@@ -138,7 +138,7 @@ Xcode > File > New > Project > macOS > App
 - Product Name: SignalDrop
 - Team: JESSE ROBERT MERIA (36D97ZTP6J)
 - Organization Identifier: com.meria
-- Bundle Identifier: com.meria.dropout
+- Bundle Identifier: com.meria.signaldrop
 - Interface: AppKit (not SwiftUI -- your code uses NSApplication directly)
 - Language: Swift
 - Uncheck: Include Tests, Core Data, CloudKit
@@ -177,13 +177,13 @@ xcodebuild -project SignalDrop.xcodeproj -scheme SignalDrop -configuration Relea
 # - RSSI updates work
 # - Event monitoring fires on connect/disconnect
 # - NWPathMonitor detects internet status changes
-# - SQLite database writes to ~/Library/Containers/com.meria.dropout/
+# - SQLite database writes to ~/Library/Containers/com.meria.signaldrop/
 # - CSV export works via NSSavePanel
 # - Launch at Login works (SMAppService)
 # - UserDefaults persist correctly
 ```
 
-**Important sandbox behavior change:** With sandbox enabled, `~/Library/Application Support/SignalDrop/` moves to `~/Library/Containers/com.meria.dropout/Data/Library/Application Support/SignalDrop/`. The code uses `FileManager.default.urls(for:in:)` which handles this automatically.
+**Important sandbox behavior change:** With sandbox enabled, `~/Library/Application Support/SignalDrop/` moves to `~/Library/Containers/com.meria.signaldrop/Data/Library/Application Support/SignalDrop/`. The code uses `FileManager.default.urls(for:in:)` which handles this automatically.
 
 ---
 
@@ -195,7 +195,7 @@ xcodebuild -project SignalDrop.xcodeproj -scheme SignalDrop -configuration Relea
 2. Click "+" to register a new App ID
 3. Select "App IDs" > "App"
 4. Description: "SignalDrop"
-5. Bundle ID: Explicit > `com.meria.dropout`
+5. Bundle ID: Explicit > `com.meria.signaldrop`
 6. Capabilities: check only what you need (no special capabilities needed beyond defaults)
 7. Register
 
@@ -203,7 +203,7 @@ xcodebuild -project SignalDrop.xcodeproj -scheme SignalDrop -configuration Relea
 
 1. Go to https://developer.apple.com/account/resources/profiles
 2. Click "+" > Mac App Store
-3. Select App ID: `com.meria.dropout`
+3. Select App ID: `com.meria.signaldrop`
 4. Select Certificate: **Apple Distribution: JESSE ROBERT MERIA (36D97ZTP6J)**
 5. Name it: "SignalDrop Mac App Store"
 6. Download and double-click to install
@@ -217,8 +217,8 @@ xcodebuild -project SignalDrop.xcodeproj -scheme SignalDrop -configuration Relea
 3. Platform: **macOS**
 4. Name: **SignalDrop**
 5. Primary Language: English (U.S.)
-6. Bundle ID: com.meria.dropout
-7. SKU: `dropout-mac` (any unique string)
+6. Bundle ID: com.meria.signaldrop
+7. SKU: `signaldrop-mac` (any unique string)
 8. User Access: Full Access
 
 ### 3.4 Set Price

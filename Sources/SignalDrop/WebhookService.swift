@@ -27,12 +27,12 @@ final class WebhookService {
             process.executableURL = URL(fileURLWithPath: "/bin/bash")
             process.arguments = [scriptURL.path]
             process.environment = [
-                "DROPOUT_EVENT": event.type.rawValue,
-                "DROPOUT_SSID": event.ssid ?? "",
-                "DROPOUT_BSSID": event.bssid ?? "",
-                "DROPOUT_RSSI": event.rssi.map(String.init) ?? "",
-                "DROPOUT_DETAILS": event.details ?? "",
-                "DROPOUT_TIMESTAMP": ISO8601DateFormatter().string(from: event.timestamp),
+                "SIGNALDROP_EVENT": event.type.rawValue,
+                "SIGNALDROP_SSID": event.ssid ?? "",
+                "SIGNALDROP_BSSID": event.bssid ?? "",
+                "SIGNALDROP_RSSI": event.rssi.map(String.init) ?? "",
+                "SIGNALDROP_DETAILS": event.details ?? "",
+                "SIGNALDROP_TIMESTAMP": ISO8601DateFormatter().string(from: event.timestamp),
             ]
 
             // Redirect output to log
@@ -93,17 +93,17 @@ final class WebhookService {
               on-power-off.sh       — WiFi radio turned off
 
             Environment variables passed to each script:
-              DROPOUT_EVENT      — Event type (e.g., "disconnected")
-              DROPOUT_SSID       — Network name (if available)
-              DROPOUT_BSSID      — Access point MAC address
-              DROPOUT_RSSI       — Signal strength in dBm
-              DROPOUT_DETAILS    — Additional details
-              DROPOUT_TIMESTAMP  — ISO 8601 timestamp
+              SIGNALDROP_EVENT      — Event type (e.g., "disconnected")
+              SIGNALDROP_SSID       — Network name (if available)
+              SIGNALDROP_BSSID      — Access point MAC address
+              SIGNALDROP_RSSI       — Signal strength in dBm
+              SIGNALDROP_DETAILS    — Additional details
+              SIGNALDROP_TIMESTAMP  — ISO 8601 timestamp
 
             Example (on-disconnect.sh):
               #!/bin/bash
               curl -X POST "https://hooks.slack.com/your/webhook" \\
-                -d "{\\"text\\":\\"WiFi dropped from $DROPOUT_SSID\\"}"
+                -d "{\\"text\\":\\"WiFi dropped from $SIGNALDROP_SSID\\"}"
 
             Make scripts executable: chmod +x on-disconnect.sh
             Hook output is logged to: ~/Library/Application Support/SignalDrop/hooks.log
