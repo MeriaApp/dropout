@@ -1,0 +1,2 @@
+REVIEW NOTES:
+SignalDrop is a menu bar utility — it has no main window. After launching, look for the WiFi icon in the macOS menu bar. Click it to see the status dropdown. The app requires Location Services permission to display WiFi network names.

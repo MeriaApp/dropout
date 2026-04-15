@@ -1,0 +1,52 @@
+SIGNALDROP — APP STORE LISTING COPY
+====================================
+
+SUBTITLE (30 char max):
+Know when your internet drops
+
+PROMOTIONAL TEXT (170 char max):
+Your Mac doesn't tell you when WiFi drops. SignalDrop does. Instant notifications, signal warnings, connection quality scoring, and ISP troubleshooting reports.
+
+DESCRIPTION:
+macOS doesn't notify you when your WiFi disconnects. The icon changes to empty bars and hopes you notice. You don't — you find out minutes later when your video call freezes or your download fails.
+
+SignalDrop fixes that. It sits in your menu bar and sends an instant notification the moment your WiFi connection changes. Disconnect, reconnect, signal degradation, network switches — you'll know immediately.
+
+WHAT IT DOES:
+
+- Instant disconnect and reconnect notifications with exact downtime duration
+- Signal degradation warnings before your connection drops
+- "Connected but no internet" detection — catches dead networks
+- SSID change alerts when your Mac silently switches networks
+- Connection quality grade (A through F) based on 24-hour stability
+- Per-network reliability tracking with uptime percentages
+- ISP troubleshooting report with outage timeline and daily breakdown
+- Event log with CSV export for sharing with your internet provider
+- Daily stats showing total disconnects and downtime at a glance
+- Launch at login — set it and forget it
+
+HOW IT WORKS:
+
+SignalDrop uses Apple's CoreWLAN framework for event-driven monitoring. Unlike tools that poll every few seconds, SignalDrop registers for kernel-level WiFi events — the OS notifies the app the instant something changes. Zero polling means zero battery impact.
+
+PRIVACY:
+
+SignalDrop makes zero network requests. No analytics. No telemetry. No data leaves your Mac. WiFi events are stored in a local database that you control. Your location (required by macOS for WiFi network names) is never recorded or transmitted.
+
+KEYWORDS (100 char max):
+disconnect,alert,network,status,connection,offline,signal,notifier,reconnect,menu,bar,log,drop,wifi
+
+PRIVACY POLICY URL:
+https://jessemeria.com/signaldrop/privacy
+
+SUPPORT URL:
+https://github.com/MeriaApp/signaldrop/issues
+
+MARKETING URL:
+https://jessemeria.com/blog/dropout-wifi-notifier-macos
+
+CATEGORY:
+Utilities
+
+PRICE:
+$4.99
